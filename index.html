@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'>
+    <link href='https://fonts.googleapis.com/css2?family=Exo+2:wght@800;900&family=Orbitron:wght@500;700;900&family=Rajdhani:wght@600;700&family=Share+Tech+Mono&display=swap' rel='stylesheet'>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+        
+        body { background: #000; overflow: hidden; width: 100vw; height: 100vh; font-family: 'Rajdhani', sans-serif; position: relative; overscroll-behavior: none; }
+
+        /* --- LOGIN PAGE UI (GREEN THEME) --- */
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 999999; display: flex; align-items: center; justify-content: center; flex-direction: column; background-image: radial-gradient(circle at center, #001a0a 0%, #000 100%); }
+        .login-box { border: 2px solid #00ff66; padding: 40px; border-radius: 10px; background: rgba(0, 10, 5, 0.9); box-shadow: 0 0 30px rgba(0, 255, 102, 0.4); text-align: center; width: 85%; max-width: 320px; }
+        .login-title { color: #fff; font-family: 'Exo 2', sans-serif; font-size: 24px; font-weight: 900; margin-bottom: 20px; text-shadow: 0 0 10px #00ff66; text-transform: uppercase; }
+        .login-input { width: 100%; background: #000; border: 1.5px solid #33ff88; color: #fff; padding: 12px; font-family: 'Orbitron', sans-serif; font-size: 16px; outline: none; text-align: center; margin-bottom: 20px; border-radius: 5px; box-shadow: inset 0 0 10px rgba(0, 255, 102, 0.2); }
+        .login-btn { width: 100%; background: linear-gradient(90deg, #00802b, #00ff66); color: #000; border: none; padding: 12px; font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 900; cursor: pointer; border-radius: 5px; box-shadow: 0 0 15px rgba(0, 255, 102, 0.5); transition: 0.1s; }
+        .login-btn:active { transform: scale(0.95); }
+        #login-error { color: #00ff66; font-family: 'Orbitron', sans-serif; font-size: 13px; font-weight: bold; margin-top: 15px; display: none; animation: textBlink 0.5s infinite alternate; }
+
+        /* --- BACKGROUND WEBVIEW --- */
+        #background-webview { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; border: none; z-index: 1; display: none; }
+
+        /* --- FLOATING WIDGET CONTAINER --- */
+        #floating-widget { position: absolute; z-index: 9999; display: none; align-items: center; justify-content: center; touch-action: none; }
+
+        /* UNIQUE MINI FLOATING LOGO */
+        #mini-wrapper { display: flex; width: 75px; height: 75px; align-items: center; justify-content: center; cursor: pointer; }
+        .mini-orb { width: 62px; height: 62px; border-radius: 50%; background: transparent; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 4.5px; }
+        .mini-orb::before { content: ''; position: absolute; width: 200%; height: 200%; background: conic-gradient(transparent 0%, transparent 40%, #4dff99 50%, #00ff66 100%); animation: spinGlow 2s linear infinite; }
+        .mini-orb-inner { width: 100%; height: 100%; background: #000a05; border-radius: 50%; position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1.5px solid rgba(51, 255, 136, 0.25); }
+        .mini-orb-inner img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; animation: pulseImg 2s infinite alternate; pointer-events: none; }
+        
+        /* MAIN WIDGET - 265x265 */
+        #main-wrapper { display: none; width: 100%; height: 100%; align-items: center; justify-content: center; cursor: move; touch-action: none; }
+        #yv-hud-outer { position: relative; width: 265px; height: 265px; clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px); background: #00ff66; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 0 10px #00ff66) drop-shadow(0 0 20px #00ff66); pointer-events: auto; }
+
+        /* INNER HUD */
+        #yv-hud { position: absolute; top: 2.5px; left: 2.5px; right: 2.5px; bottom: 2.5px; background: #000a05; clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px); display: flex; flex-direction: column; padding: 10px; z-index: 2; overflow: hidden; }
+        .grid-bg { position: absolute; inset: 0; background-image: linear-gradient(rgba(0, 255, 102, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 102, 0.15) 1px, transparent 1px); background-size: 16px 16px; z-index: 0; opacity: 0.6; pointer-events: none; }
+
+        /* UI Elements Styling */
+        .header { display: flex; align-items: center; justify-content: space-between; z-index: 1; border-bottom: 1px solid rgba(0, 255, 102, 0.3); padding-bottom: 6px; margin-bottom: 8px; }
+        .logo-area { display: flex; align-items: center; gap: 6px; }
+        .gemini-wrap { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: rgba(0,0,0,0.5); border: 1.5px solid #33ff88; border-radius: 50%; box-shadow: 0 0 10px rgba(0, 255, 102, 0.5); position: relative; overflow: hidden; animation: wrapPulse 1.5s infinite alternate; }
+        .gemini-logo { width: 14px; height: 14px; animation: pulseGemini 1s ease-in-out infinite alternate; fill: url(#gemini-grad); filter: drop-shadow(0 0 5px #33ff88); z-index: 2; }
+        .logo-text { display: flex; flex-direction: column; justify-content: center; }
+        .logo-title { font-family: 'Exo 2', sans-serif; font-size: 11.5px; font-weight: 900; background-image: linear-gradient(100deg, #66ffaa 0%, #ffffff 30%, #00ff66 50%, #4dff99 80%, #66ffaa 100%); -webkit-background-clip: text; color: transparent; }
+        .result-badge { border: 1px solid #00ff66; color: #00ff66; font-family: 'Orbitron', sans-serif; font-size: 8px; font-weight: 900; padding: 3px 8px; background: rgba(0, 255, 102, 0.1); clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px); }
+        .content-area { display: flex; flex: 1; z-index: 1; gap: 6px; position: relative; }
+        .sidebar { display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 2px 0; width: 22px; z-index: 2; }
+        .node { width: 20px; height: 20px; border-radius: 50%; background: #003311; color: #ccffdd; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 10px; display: flex; align-items: center; justify-content: center; }
+        .node.hi-green { background: #00ff66; color: #000; box-shadow: 0 0 12px rgba(0, 255, 102, 0.9); }
+        .display-box { flex: 1; border: 1px solid rgba(0, 255, 102, 0.3); border-radius: 6px; display: flex; flex-direction: column; position: relative; overflow: hidden; background-size: cover; background-position: center; z-index: 1; }
+        .disp-id-wrap { text-align: center; padding: 4px 0; border-bottom: 2px solid transparent; border-image: linear-gradient(90deg, transparent, #00ff66, transparent) 1; background: rgba(0,0,0,0.5); z-index: 2; }
+        .disp-id { color: #66ffaa; font-family: 'Share Tech Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }
+        .disp-main-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; position: relative; z-index: 1; pointer-events: none; }
+
+        /* Ready Tool */
+        .core-box { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; margin-top: -2px; }
+        .core-icon-wrap { position: relative; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; margin-bottom: 2px; }
+        .core-arc { position: absolute; inset: 4px; border: 1.8px solid transparent; border-left-color: #33ff88; border-right-color: #33ff88; border-radius: 50%; animation: spinNorm 2.5s linear infinite; }
+        .core-solid { position: absolute; inset: 0; border: 2.5px solid transparent; border-top-color: #00ff66; border-left-color: #00ff66; border-radius: 50%; animation: spinRev 2s linear infinite; }
+        .core-diamond { width: 14px; height: 14px; background: #00ff66; transform: rotate(45deg); box-shadow: 0 0 10px #00ff66; animation: blinkPulse 1.5s infinite alternate; }
+        .core-headline { font-family: 'Exo 2', sans-serif; font-size: 15px; font-weight: 800; color: #fff; text-shadow: 0 0 8px #33ff88; }
+        .core-prog-bg { width: 65%; height: 3px; background: rgba(255,255,255,0.1); }
+        .core-prog-fill { height: 100%; background: linear-gradient(90deg, #00cc55, #00ff66); width: 100%; }
+        .core-subtext { font-family: 'Orbitron', sans-serif; font-size: 8px; color: #99ffbb; }
+
+        /* Animation Tool */
+        .full-scan-box { position: absolute; inset: 0; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; z-index: 10; }
+        .full-scan-box::after { content: ''; position: absolute; inset: 0; background: rgba(0, 10, 5, 0.4); z-index: 11; }
+        .full-scan-line { position: absolute; top: 0; left: 0; width: 100%; height: 2.5px; background: #33ff88; box-shadow: 0 0 15px #33ff88, 0 20px 40px 15px #00ff66, 0 -20px 40px 15px #00ff66; animation: fullScan 1.2s ease-in-out infinite alternate; z-index: 12; }
+        .scan-overlay-text { position: relative; color: #fff; font-family: 'Orbitron', sans-serif; font-size: 13px; font-weight: 900; z-index: 15; animation: textBlink 1s infinite alternate; text-shadow: 0 0 10px #33ff88; }
+
+        /* Result Tool */
+        .res-row { display: flex; width: 100%; align-items: center; justify-content: center; gap: 15px; padding: 0 10px; }
+        .res-text-huge { font-family: 'Exo 2', sans-serif; font-size: 33px; font-weight: 900; background-image: linear-gradient(100deg, #66ffaa 0%, #ffffff 30%, #00ff66 50%, #33ff88 80%, #66ffaa 100%); -webkit-background-clip: text; color: transparent; flex: 1; text-align: right; filter: drop-shadow(0 0 10px rgba(0, 255, 102, 0.6)); }
+        .res-right { display: flex; flex: 1; justify-content: flex-start; }
+        .number-snake-wrap { position: relative; width: 44px; height: 44px; border-radius: 50%; padding: 2px; display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 0 0 12px rgba(51, 255, 136, 0.5); }
+        .number-snake-bg { position: absolute; inset: -15px; background: conic-gradient(transparent, transparent 60%, #4dff99 80%, #00ff66 100%); animation: spinSnake 1.5s linear infinite; z-index: 1; }
+        .number-inner { position: relative; width: 100%; height: 100%; border-radius: 50%; background: #000a05; z-index: 2; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .number-inner img { width: 100%; height: 100%; object-fit: cover; }
+        .seq-glass-box { background: rgba(0,0,0,0.7); border: 1px solid rgba(51, 255, 136, 0.4); border-radius: 12px; padding: 3px 14px; margin-top: 5px; backdrop-filter: blur(5px); z-index: 2; display: inline-flex; }
+        .seq-glass-text { color: #99ffbb; font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: bold; }
+
+        /* Buttons & Footer */
+        .actions { display: flex; gap: 8px; margin-top: 8px; z-index: 1; height: 35px; margin-bottom: 6px; }
+        .btn-analysis { flex: 1; background: linear-gradient(90deg, #00802b, #00ff66); color: #000; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 13px; border: none; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); cursor: pointer; box-shadow: 0 0 15px rgba(0, 255, 102, 0.6); }
+        .btn-analysis:active { transform: scale(0.96); }
+        .btn-hide { width: 70px; background: linear-gradient(145deg, rgba(0, 255, 102, 0.1), rgba(0,0,0,0.6)); border: 1.5px solid #00ff66; border-radius: 8px; color: #00ff66; font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 900; cursor: pointer; }
+        .btn-hide:active { transform: scale(0.92); background: rgba(0, 255, 102, 0.3); color: #fff; }
+        .footer-divider { width: calc(100% + 20px); margin-left: -10px; height: 2.5px; background: radial-gradient(circle, #4dff99 0%, #009933 60%, transparent 100%); margin-bottom: 5px; }
+        .footer { display: flex; justify-content: space-between; align-items: center; font-size: 9px; font-weight: 700; color: #ccffdd; z-index: 1; }
+        .ping { color: #4dff99; font-family: 'Share Tech Mono', monospace; font-size: 11px; }
+
+        @keyframes spinNorm { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes spinRev { 0% { transform: rotate(0deg); } 100% { transform: rotate(-360deg); } }
+        @keyframes blinkPulse { 0% { transform: scale(1) rotate(45deg); opacity: 1; } 100% { transform: scale(0.7) rotate(45deg); opacity: 0.4; } }
+        @keyframes spinGlow { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulseImg { 0% { transform: scale(0.95); opacity: 0.9; } 100% { transform: scale(1.05); opacity: 1; } }
+        @keyframes fullScan { 0% { top: -10%; } 100% { top: 110%; } }
+        @keyframes textBlink { 0% { opacity: 1; } 100% { opacity: 0.4; } }
+        @keyframes spinSnake { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<!-- LOGIN OVERLAY -->
+<div id="login-overlay">
+    <div class="login-box">
+        <div class="login-title">SYSTEM LOGIN</div>
+        <input type="text" id="pass-input" class="login-input" placeholder="ENTER KEY" autocomplete="off">
+        <button class="login-btn" onclick="verifyLogin()">AUTHORIZE ACCESS</button>
+        <div id="login-error">ACCESS DENIED - INVALID KEY</div>
+    </div>
+</div>
+
+<!-- BACKGROUND WEBVIEW (IFRAME) -->
+<iframe id="background-webview" src="https://shreewin6.com/#/login"></iframe>
+
+<!-- DRAGGABLE FLOATING CONTAINER -->
+<div id="floating-widget">
+    <div id='mini-wrapper' onclick='openM()'>
+      <div class='mini-orb'>
+        <div class='mini-orb-inner'><img src='logo.png'/></div>
+      </div>
+    </div>
+
+    <div id='main-wrapper'>
+      <div id='yv-hud-outer'>
+        <div id='yv-hud'>
+          <div class='grid-bg'></div>
+          <div class='header'>
+              <div class='logo-area'>
+                  <div class='gemini-wrap'>
+                     <svg viewBox="0 0 24 24" class="gemini-logo">
+                       <defs><linearGradient id="gemini-grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#4dff99" /><stop offset="100%" stop-color="#00ff66" /></linearGradient></defs>
+                       <path d="M12 2C12 7.5 16.5 12 22 12C16.5 12 12 16.5 12 22C12 16.5 7.5 12 2 12C7.5 12 12 7.5 12 2Z"/>
+                     </svg>
+                  </div>
+                  <div class='logo-text'>
+                      <span class='logo-title'>AI ADMIN PANEL</span>
+                  </div>
+              </div>
+              <div class='result-badge' id='status-badge'>READY</div>
+          </div>
+          <div class='content-area'>
+              <div class='sidebar'>
+                  <div class='node'>L</div><div class='node'>I</div><div class='node'>V</div><div class='node hi-green'>E</div>
+              </div>
+              <div class='display-box' id='display-box' style="background-image: url('back.png');">
+                  <div class='disp-id-wrap' id='disp-id-wrap'><span class='disp-id' id='disp-id'>ID ---</span></div>
+                  <div class='disp-main-center' id='disp-main-center'></div>
+              </div>
+          </div>
+          <div class='actions'>
+              <button class='btn-analysis' id='btn-main' onclick='startHack()'><span id='btn-main-text'>⌕ ANALYSIS</span></button>
+              <button class='btn-hide' onclick='closeM()'>HIDE</button>
+          </div>
+          <div class='footer-divider'></div>
+          <div class='footer'>
+              <div><span style="color:#00ff66">●</span> CORE ONLINE</div>
+              <div class='ping' id='ping-text'>74 ms</div>
+          </div>
+        </div>
+      </div>
+    </div>
+</div>
+
+<script>
+// ==========================================
+// 1. API BASED SYSTEM (AS PER USER REQUEST)
+// ==========================================
+let currentPeriod = '---'; 
+let currentResultNum = '5';
+let state = 'ready'; 
+let isOpen = false;
+let lastFetchedPrd = '';
+
+// Ping Randomizer (Fake Network Ping for cool UI)
+setInterval(function(){ 
+    let pingEl = document.getElementById('ping-text');
+    if(pingEl) pingEl.innerText = (Math.floor(Math.random() * 25) + 30) + ' ms'; 
+}, 1000);
+
+// Auto-Sync Period ID from API every 3 seconds (To keep ID UI updated)
+function syncPeriodID() {
+    fetch('https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json')
+    .then(response => response.json())
+    .then(data => {
+        if(data && data.data && data.data.list) {
+            let last = data.data.list[0];
+            currentPeriod = last.issueNumber.toString(); 
+            
+            if (state === 'ready' || state === 'result') {
+                let dispId = document.getElementById('disp-id');
+                if (dispId) dispId.innerText = 'ID ' + currentPeriod;
+            }
+        }
+    }).catch(e => console.log("Background API sync error"));
+}
+
+setInterval(syncPeriodID, 3000);
+
+// ==========================================
+// 2. LOGIN LOGIC
+// ==========================================
+function verifyLogin() {
+    var pass = document.getElementById('pass-input').value.trim();
+    if (pass === 'ADMIN') { 
+        document.getElementById('login-overlay').style.display = 'none';
+        document.getElementById('background-webview').style.display = 'block';
+        document.getElementById('floating-widget').style.display = 'flex';
+        initWidgetPosition(); 
+        syncPeriodID(); 
+        render(); 
+    } else {
+        document.getElementById('login-error').style.display = 'block';
+    }
+}
+
+function openM() { 
+    if(isOpen) return; isOpen = true; 
+    document.getElementById('main-wrapper').style.display='flex'; 
+    document.getElementById('mini-wrapper').style.display='none'; 
+    syncPeriodID(); 
+    render(); 
+}
+
+function closeM() { 
+    isOpen = false; 
+    document.getElementById('main-wrapper').style.display='none'; 
+    document.getElementById('mini-wrapper').style.display='flex'; 
+}
+
+// ==========================================
+// 3. MAIN API ANALYSIS TRIGGER
+// ==========================================
+function startHack() {
+    if(state === 'scanning') return; 
+
+    state = 'scanning';
+    render();
+
+    console.log("Analysing...");
+
+    fetch('https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json')
+    .then(response => response.json())
+    .then(data => {
+        let last = data.data.list[0];
+        let n = parseInt(last.number);       
+        let p = last.issueNumber.toString(); 
+
+        if (p === lastFetchedPrd) {
+            console.log("Wait for the next period. Current period already checked.");
+        }
+        
+        lastFetchedPrd = p; 
+        currentPeriod = p;
+        currentResultNum = n.toString();
+
+        let s = (n <= 4) ? 'SMALL' : 'BIG'; 
+        
+        console.log("----- RESULT -----");
+        console.log("Period : " + p);
+        console.log("Number : " + n);
+        console.log("Size   : " + s);
+        console.log("------------------");
+
+        setTimeout(function() {
+            state = 'result';
+            render();
+        }, 3000);
+
+    }).catch(error => {
+        console.log("Error fetching data!");
+        currentResultNum = Math.floor(Math.random() * 10).toString();
+        setTimeout(function() {
+            state = 'result';
+            render();
+        }, 3000);
+    });
+}
+
+function render() {
+    var mainCenterEl = document.getElementById('disp-main-center');
+    var btnEl = document.getElementById('btn-main-text');
+    var idWrap = document.getElementById('disp-id-wrap');
+    var badgeEl = document.getElementById('status-badge');
+
+    if (state === 'scanning') {
+        idWrap.style.display = 'none';
+        badgeEl.innerText = 'SCAN';
+        mainCenterEl.innerHTML = 
+            "<div class='full-scan-box' style=\"background-image: url('ani.png');\">" +
+              "<div class='full-scan-line'></div>" +
+              "<div class='scan-overlay-text'>DECRYPTING DATA...</div>" +
+            "</div>";
+        btnEl.innerText = 'SCANNING...';
+        
+    } else if (state === 'result') {
+        idWrap.style.display = 'block';
+        badgeEl.innerText = 'WINGO';
+        
+        var bsm = (parseInt(currentResultNum) <= 4) ? 'SMALL' : 'BIG';
+        
+        var seqDigits = currentPeriod.slice(-5);
+        if(seqDigits === '') seqDigits = '-----'; 
+
+        mainCenterEl.innerHTML = 
+            '<div style="display:flex; flex-direction:column; width:100%; justify-content:center; align-items:center; gap: 4px;">' +
+              '<div class="res-row">' +
+                '<div class="res-text-huge">' + bsm + '</div>' +
+                '<div class="res-right"><div class="number-snake-wrap">' +
+                   '<div class="number-snake-bg"></div>' +
+                   '<div class="number-inner"><img src="num_' + currentResultNum + '.png" /></div>' +
+                '</div></div>' +
+              '</div>' +
+              '<div class="seq-glass-box">' +
+                '<div class="seq-glass-text">SEQ : ' + seqDigits + '</div>' +
+              '</div>' +
+            '</div>';
+        btnEl.innerText = '⌕ ANALYSIS';
+        
+    } else {
+        idWrap.style.display = 'block';
+        badgeEl.innerText = 'READY';
+        mainCenterEl.innerHTML = 
+           "<div class='core-box'>" +
+             "<div class='core-icon-wrap'><div class='core-solid'></div><div class='core-arc'></div><div class='core-diamond'></div></div>" +
+             "<div class='core-headline'>CORE CONNECTED</div>" +
+             "<div class='core-prog-bg'><div class='core-prog-fill'></div></div>" +
+             "<div class='core-subtext'>PREMIUM BYPASS READY</div>" +
+           "</div>";
+        btnEl.innerText = '⌕ ANALYSIS';
+    }
+}
+
+// ==========================================
+// 4. DRAG LOGIC (NO BACKGROUND SCROLLING)
+// ==========================================
+function makeDraggable(el) {
+    var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+    
+    el.onmousedown = dragMouseDown;
+    el.ontouchstart = dragMouseDown;
+
+    function dragMouseDown(e) {
+        if (e.target.tagName.toLowerCase() === 'button' || e.target.closest('.actions')) return;
+        
+        e = e || window.event;
+        if(e.type === 'touchstart') {
+            pos3 = e.touches[0].clientX;
+            pos4 = e.touches[0].clientY;
+        } else {
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+        }
+        
+        document.onmouseup = closeDragElement;
+        document.onmousemove = elementDrag;
+        document.ontouchend = closeDragElement;
+        document.ontouchmove = elementDrag;
+    }
+
+    function elementDrag(e) {
+        e = e || window.event;
+        if (e.cancelable) { e.preventDefault(); } 
+
+        var clientX, clientY;
+        if(e.type === 'touchmove') {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        
+        pos1 = pos3 - clientX;
+        pos2 = pos4 - clientY;
+        pos3 = clientX;
+        pos4 = clientY;
+        
+        el.style.top = (el.offsetTop - pos2) + "px";
+        el.style.left = (el.offsetLeft - pos1) + "px";
+    }
+
+    function closeDragElement() {
+        document.onmouseup = null;
+        document.onmousemove = null;
+        document.ontouchend = null;
+        document.ontouchmove = null;
+    }
+}
+
+function initWidgetPosition() {
+    var dragWidget = document.getElementById('floating-widget');
+    dragWidget.style.left = (window.innerWidth / 2 - 37.5) + "px"; 
+    dragWidget.style.top = (window.innerHeight / 2 - 37.5) + "px";
+    makeDraggable(dragWidget);
+}
+</script>
+</body>
+</html>
